@@ -3,7 +3,7 @@ You can use this `oproc` package when you want to speed up processing with gorou
 while guaranteeing ordering.
 
 ## Usage
-See `ordered` and `ctan` of examples directory for examples of its use.
+See [ordered](./examples/ordered) and [ctan](./examples/ctan) for examples of its use.
 ````go
 package main
 
