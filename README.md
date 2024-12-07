@@ -5,39 +5,50 @@ while guaranteeing ordering.
 ## Usage
 See `ordered` and `ctan` of examples directory for examples of its use.
 ````go
-package oproc
+package main
 
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"time"
+
+	"github.com/sjnam/oproc"
 )
 
-func ExampleOrderedProc() {
+func main() {
 	inputStream := func() <-chan string {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
-			for i := 0; i < 4; i++ {
-				ch <- fmt.Sprintf("%d", i)
+			for i := 0; i < 1000; i++ {
+				// sleep instread of reading a file
+				time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
+				ch <- fmt.Sprintf("line:%3d", i)
 			}
 		}()
 		return ch
 	}
 
 	doWork := func(str string) string {
-		return fmt.Sprintf("line:%s", str)
+		// sleep instead of fetching
+		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		return fmt.Sprintf("%s ... is fetched!", str)
 	}
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	for s := range OrderedProc(ctx, inputStream(), doWork) {
+	start := time.Now()
+
+	for s := range oproc.OrderedProc(ctx, inputStream(), doWork) {
 		fmt.Println(s)
-		// Output:
-		// line:0
-		// line:1
-		// line:2
-		// line:3
 	}
+
+	fmt.Println("done", time.Now().Sub(start))
 }
 ````
+
+## References
+1. [chan chan は意外と美味しい](https://qiita.com/hogedigo/items/15af273176599307a2b2)
+1. [Concurrency in Go](https://www.oreilly.com/library/view/concurrency-in-go/9781491941294/)

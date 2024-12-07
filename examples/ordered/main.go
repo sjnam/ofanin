@@ -15,16 +15,18 @@ func main() {
 		go func() {
 			defer close(ch)
 			for i := 0; i < 1000; i++ {
+				// sleep instread of reading a file
 				time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
-				ch <- fmt.Sprintf("%3d", i)
+				ch <- fmt.Sprintf("line:%3d", i)
 			}
 		}()
 		return ch
 	}
 
 	doWork := func(str string) string {
+		// sleep instead of fetching
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
-		return fmt.Sprintf("line:%s", str)
+		return fmt.Sprintf("%s ... is fetched!", str)
 	}
 
 	ctx, cancel := context.WithCancel(context.TODO())

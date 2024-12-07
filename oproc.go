@@ -9,11 +9,11 @@ func OrderedProc[T, V any](
 	ctx context.Context,
 	inStream <-chan V,
 	doWork func(V) T,
-	cnt ...int,
+	size ...int,
 ) <-chan T {
 	lvl := runtime.NumCPU()
-	if len(cnt) > 0 {
-		lvl = cnt[0]
+	if len(size) > 0 {
+		lvl = size[0]
 	}
 
 	orDone := func(ctx context.Context, c <-chan T) <-chan T {
