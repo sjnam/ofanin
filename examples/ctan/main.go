@@ -15,6 +15,11 @@ type item struct {
 	Key     string `json:"key,omitempty"`
 	Name    string `json:"name,omitempty"`
 	Caption string `json:"caption,omitempty"`
+	Authors []struct {
+		ID     string `json:"id"`
+		Active bool   `json:"active"`
+	} `json:"authors,omitempty"`
+	Topics []string `json:"topics,omitempty"`
 }
 
 func main() {
@@ -33,31 +38,33 @@ func main() {
 				log.Fatal(err)
 			}
 
-			for _, pkg := range list {
-				valStream <- pkg
+			for _, o := range list {
+				valStream <- o
 			}
 		}()
 		return valStream
 	}
 
-	doWork := func(o item) string {
+	doWork := func(o item) item {
 		resp, err := http.Get("https://ctan.org/json/2.0/pkg/" + o.Key)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer resp.Body.Close()
 
-		var pkg item
-		if err = json.NewDecoder(resp.Body).Decode(&pkg); err != nil {
-			log.Fatal(pkg.ID, err)
+		if err = json.NewDecoder(resp.Body).Decode(&o); err != nil {
+			log.Fatal(o.ID, err)
 		}
-		return pkg.ID
+		return o
 	}
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
 	for s := range oproc.OrderedProc(ctx, inputStream(), doWork, 20) {
-		fmt.Println(s)
+		b, err := json.Marshal(s)
+		if err == nil {
+			fmt.Println(string(b))
+		}
 	}
 }
