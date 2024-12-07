@@ -1,7 +1,5 @@
 # Ordered Process
-This package `oproc` provides ordered process using channel of channel.
-
-You can use `oproc` package when you want to speed up processing with goroutines
+You can use this `oproc` package when you want to speed up processing with goroutines
 while guaranteeing ordering.
 
 ## Usage
