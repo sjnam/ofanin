@@ -16,7 +16,7 @@ func OrderedProc[T, V any](
 		lvl = size[0]
 	}
 
-	orDone := func(ctx context.Context, c <-chan T) <-chan T {
+	orDone := func(c <-chan T) <-chan T {
 		ch := make(chan T)
 		go func() {
 			defer close(ch)
@@ -56,7 +56,7 @@ func OrderedProc[T, V any](
 	}
 
 	// bridge-channel
-	return func(ctx context.Context, chch <-chan <-chan T) <-chan T {
+	return func(chch <-chan <-chan T) <-chan T {
 		vch := make(chan T)
 		go func() {
 			defer close(vch)
@@ -71,7 +71,7 @@ func OrderedProc[T, V any](
 				case <-ctx.Done():
 					return
 				}
-				for v := range orDone(ctx, ch) {
+				for v := range orDone(ch) {
 					select {
 					case vch <- v:
 					case <-ctx.Done():
@@ -80,5 +80,5 @@ func OrderedProc[T, V any](
 			}
 		}()
 		return vch
-	}(ctx, chanchan())
+	}(chanchan())
 }
