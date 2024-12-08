@@ -1,4 +1,4 @@
-# Ordered Process
+# Concurrent ordered processing
 You can use this `oproc` package when you want to speed up processing with goroutines
 while guaranteeing ordering.
 
@@ -41,7 +41,7 @@ func main() {
 
 	start := time.Now()
 
-	for s := range oproc.OrderedProc(ctx, inputStream(), doWork) {
+	for s := range oproc.OrderedProc(ctx, inputStream(), doWork /*, 10 optional # of goroutines */) {
 		fmt.Println(s)
 	}
 
