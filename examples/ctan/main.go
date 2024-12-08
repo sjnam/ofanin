@@ -23,7 +23,11 @@ type item struct {
 }
 
 func main() {
-	inputStream := func() <-chan item {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	my := oproc.NewOrderedProc[item /*input param*/, item /*output param*/](ctx)
+	my.InputStream = func() <-chan item {
 		valStream := make(chan item)
 		go func() {
 			defer close(valStream)
@@ -43,9 +47,8 @@ func main() {
 			}
 		}()
 		return valStream
-	}
-
-	doWork := func(o item) item {
+	}()
+	my.DoWork = func(o item) item {
 		resp, err := http.Get("https://ctan.org/json/2.0/pkg/" + o.Key)
 		if err != nil {
 			log.Fatal(err)
@@ -57,11 +60,9 @@ func main() {
 		}
 		return o
 	}
+	my.Size = 20
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
-	for s := range oproc.OrderedProc(ctx, inputStream(), doWork, 20) {
+	for s := range my.Process() {
 		b, err := json.Marshal(s)
 		if err == nil {
 			fmt.Println(string(b))

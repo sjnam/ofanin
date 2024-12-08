@@ -5,24 +5,28 @@ import (
 	"runtime"
 )
 
-func OrderedProc[T, V any](
-	ctx context.Context,
-	inStream <-chan V,
-	doWork func(V) T,
-	size ...int,
-) <-chan T {
-	lvl := runtime.NumCPU()
-	if len(size) > 0 {
-		lvl = size[0]
-	}
+type OrderedProc[TI, TO any] struct {
+	Ctx         context.Context
+	InputStream <-chan TI
+	DoWork      func(TI) TO
+	Size        int
+}
 
-	orDone := func(c <-chan T) <-chan T {
-		ch := make(chan T)
+func NewOrderedProc[TI, TO any](ctx context.Context) *OrderedProc[TI, TO] {
+	return &OrderedProc[TI, TO]{
+		Ctx:  ctx,
+		Size: runtime.NumCPU(),
+	}
+}
+
+func (o *OrderedProc[TI, TO]) Process() <-chan TO {
+	orDone := func(c <-chan TO) <-chan TO {
+		ch := make(chan TO)
 		go func() {
 			defer close(ch)
 			for {
 				select {
-				case <-ctx.Done():
+				case <-o.Ctx.Done():
 					return
 				case v, ok := <-c:
 					if !ok {
@@ -30,7 +34,7 @@ func OrderedProc[T, V any](
 					}
 					select {
 					case ch <- v:
-					case <-ctx.Done():
+					case <-o.Ctx.Done():
 					}
 				}
 			}
@@ -38,17 +42,17 @@ func OrderedProc[T, V any](
 		return ch
 	}
 
-	chanchan := func() <-chan <-chan T {
-		chch := make(chan (<-chan T), lvl)
+	chanchan := func() <-chan <-chan TO {
+		chch := make(chan (<-chan TO), o.Size)
 		go func() {
 			defer close(chch)
-			for v := range inStream {
-				ch := make(chan T)
+			for v := range o.InputStream {
+				ch := make(chan TO)
 				chch <- ch
 
 				go func() {
 					defer close(ch)
-					ch <- doWork(v)
+					ch <- o.DoWork(v)
 				}()
 			}
 		}()
@@ -56,25 +60,25 @@ func OrderedProc[T, V any](
 	}
 
 	// bridge-channel
-	return func(chch <-chan <-chan T) <-chan T {
-		vch := make(chan T)
+	return func(chch <-chan <-chan TO) <-chan TO {
+		vch := make(chan TO)
 		go func() {
 			defer close(vch)
 			for {
-				var ch <-chan T
+				var ch <-chan TO
 				select {
 				case maybe, ok := <-chch:
 					if !ok {
 						return
 					}
 					ch = maybe
-				case <-ctx.Done():
+				case <-o.Ctx.Done():
 					return
 				}
 				for v := range orDone(ch) {
 					select {
 					case vch <- v:
-					case <-ctx.Done():
+					case <-o.Ctx.Done():
 					}
 				}
 			}

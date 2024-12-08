@@ -17,7 +17,11 @@ import (
 )
 
 func main() {
-	inputStream := func() <-chan string {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	my := oproc.NewOrderedProc[string /*input param*/, string /*output param*/](ctx)
+	my.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
@@ -28,20 +32,16 @@ func main() {
 			}
 		}()
 		return ch
-	}
-
-	doWork := func(str string) string {
+	}()
+	my.DoWork = func(str string) string {
 		// sleep instead of fetching
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 		return fmt.Sprintf("%s ... is fetched!", str)
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
 	start := time.Now()
 
-	for s := range oproc.OrderedProc(ctx, inputStream(), doWork /*, 10 optional # of goroutines */) {
+	for s := range my.Process() {
 		fmt.Println(s)
 	}
 

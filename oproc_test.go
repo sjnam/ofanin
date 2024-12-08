@@ -6,7 +6,11 @@ import (
 )
 
 func ExampleOrderedProc() {
-	inputStream := func() <-chan string {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	my := NewOrderedProc[string /*input param*/, string /*output param*/](ctx)
+	my.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
@@ -15,16 +19,12 @@ func ExampleOrderedProc() {
 			}
 		}()
 		return ch
-	}
-
-	doWork := func(str string) string {
+	}()
+	my.DoWork = func(str string) string {
 		return fmt.Sprintf("line:%s", str)
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
-	for s := range OrderedProc(ctx, inputStream(), doWork) {
+	for s := range my.Process() {
 		fmt.Println(s)
 		// Output:
 		// line:0
