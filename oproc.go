@@ -5,7 +5,7 @@ import (
 	"runtime"
 )
 
-type OrderedProc[TI, TO any] struct {
+type OrderedProc[TI /*input param type*/, TO /*output param type*/ any] struct {
 	Ctx         context.Context
 	InputStream <-chan TI
 	DoWork      func(TI) TO
