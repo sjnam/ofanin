@@ -1,4 +1,4 @@
-# Concurrent ordered processing
+# Ordered Fan-In
 You can use this `oproc` package when you want to speed up processing with goroutines
 while guaranteeing ordering.
 
@@ -13,14 +13,14 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/sjnam/oproc"
+	"github.com/sjnam/ofanin"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	my := oproc.NewOrderedProc[string /*input param*/, string /*output param*/](ctx)
+	my := ofanin.NewOrderedFanIn[string /*input param*/, string /*output param*/](ctx)
 	my.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {

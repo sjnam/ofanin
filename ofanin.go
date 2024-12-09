@@ -1,25 +1,25 @@
-package oproc
+package ofanin
 
 import (
 	"context"
 	"runtime"
 )
 
-type OrderedProc[TI /*input param type*/, TO /*output param type*/ any] struct {
+type OrderedFanIn[TI /*input param type*/, TO /*output param type*/ any] struct {
 	Ctx         context.Context
 	InputStream <-chan TI
 	DoWork      func(TI) TO
 	Size        int
 }
 
-func NewOrderedProc[TI, TO any](ctx context.Context) *OrderedProc[TI, TO] {
-	return &OrderedProc[TI, TO]{
+func NewOrderedFanIn[TI, TO any](ctx context.Context) *OrderedFanIn[TI, TO] {
+	return &OrderedFanIn[TI, TO]{
 		Ctx:  ctx,
 		Size: runtime.NumCPU(),
 	}
 }
 
-func (o *OrderedProc[TI, TO]) Process() <-chan TO {
+func (o *OrderedFanIn[TI, TO]) Process() <-chan TO {
 	orDone := func(c <-chan TO) <-chan TO {
 		ch := make(chan TO)
 		go func() {

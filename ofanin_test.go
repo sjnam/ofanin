@@ -1,15 +1,15 @@
-package oproc
+package ofanin
 
 import (
 	"context"
 	"fmt"
 )
 
-func ExampleOrderedProc() {
+func ExampleOrderedFanIn() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	my := NewOrderedProc[string /*input param*/, string /*output param*/](ctx)
+	my := NewOrderedFanIn[string /*input param*/, string /*output param*/](ctx)
 	my.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {

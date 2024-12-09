@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sjnam/oproc"
+	"github.com/sjnam/ofanin"
 )
 
 type item struct {
@@ -26,7 +26,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	my := oproc.NewOrderedProc[item /*input param*/, item /*output param*/](ctx)
+	my := ofanin.NewOrderedFanIn[item /*input param*/, item /*output param*/](ctx)
 	my.InputStream = func() <-chan item {
 		valStream := make(chan item)
 		go func() {
