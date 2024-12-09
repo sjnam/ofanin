@@ -6,4 +6,4 @@ The CTAN provides mean to access the database and retrieve the information in fo
 1. Extract the `key` from the above list and obtain detailed information about the package using that `key`.
 1. The information about a single package can be obtained under the URL like `http://www.ctan.org/json/2.0/pkg/{key}`
 
-Getting detailed information of all packages using the above method is very slow. Therefore, use `oproc` to speed it up.
+Getting detailed information of all packages using the above method is very slow. Therefore, use `ofanin` to speed it up.

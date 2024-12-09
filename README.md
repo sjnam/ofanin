@@ -1,5 +1,5 @@
 # Ordered Fan-In
-You can use this `oproc` package when you want to speed up processing with goroutines
+You can use this `ofanin` package when you want to speed up processing with goroutines
 while guaranteeing ordering.
 
 ## Usage
@@ -52,4 +52,4 @@ func main() {
 ## References
 1. [chan chan は意外と美味しい](https://qiita.com/hogedigo/items/15af273176599307a2b2)
 1. [Concurrency in Go](https://www.oreilly.com/library/view/concurrency-in-go/9781491941294/)
-1. [Sudoku solver with dlx and oproc](https://github.com/sjnam/dlx/tree/main/examples/sudoku)
+1. [Sudoku solver with dlx and ofanin](https://github.com/sjnam/dlx/tree/main/examples/sudoku)
