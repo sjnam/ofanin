@@ -13,8 +13,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	my := ofanin.NewOrderedFanIn[string /*input param*/, string /*output param*/](ctx)
-	my.InputStream = func() <-chan string {
+	ofin := ofanin.NewOrderedFanIn[string /*input param*/, string /*output param*/](ctx)
+	ofin.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
@@ -26,7 +26,7 @@ func main() {
 		}()
 		return ch
 	}()
-	my.DoWork = func(str string) string {
+	ofin.DoWork = func(str string) string {
 		// sleep instead of fetching
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 		return fmt.Sprintf("%s ... is fetched!", str)
@@ -34,7 +34,7 @@ func main() {
 
 	start := time.Now()
 
-	for s := range my.Process() {
+	for s := range ofin.Process() {
 		fmt.Println(s)
 	}
 

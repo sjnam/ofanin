@@ -5,23 +5,23 @@ import (
 	"runtime"
 )
 
-type OrderedFanIn[TI /*input param type*/, TO /*output param type*/ any] struct {
+type OrderedFanIn[IN, OUT any] struct {
 	Ctx         context.Context
-	InputStream <-chan TI
-	DoWork      func(TI) TO
+	InputStream <-chan IN
+	DoWork      func(IN) OUT
 	Size        int
 }
 
-func NewOrderedFanIn[TI, TO any](ctx context.Context) *OrderedFanIn[TI, TO] {
-	return &OrderedFanIn[TI, TO]{
+func NewOrderedFanIn[IN, OUT any](ctx context.Context) *OrderedFanIn[IN, OUT] {
+	return &OrderedFanIn[IN, OUT]{
 		Ctx:  ctx,
 		Size: runtime.NumCPU(),
 	}
 }
 
-func (o *OrderedFanIn[TI, TO]) Process() <-chan TO {
-	orDone := func(c <-chan TO) <-chan TO {
-		ch := make(chan TO)
+func (o *OrderedFanIn[IN, OUT]) Process() <-chan OUT {
+	orDone := func(c <-chan OUT) <-chan OUT {
+		ch := make(chan OUT)
 		go func() {
 			defer close(ch)
 			for {
@@ -42,12 +42,12 @@ func (o *OrderedFanIn[TI, TO]) Process() <-chan TO {
 		return ch
 	}
 
-	chanchan := func() <-chan <-chan TO {
-		chch := make(chan (<-chan TO), o.Size)
+	chanchan := func() <-chan <-chan OUT {
+		chch := make(chan (<-chan OUT), o.Size)
 		go func() {
 			defer close(chch)
 			for v := range o.InputStream {
-				ch := make(chan TO)
+				ch := make(chan OUT)
 				chch <- ch
 
 				go func() {
@@ -60,12 +60,12 @@ func (o *OrderedFanIn[TI, TO]) Process() <-chan TO {
 	}
 
 	// bridge-channel
-	return func(chch <-chan <-chan TO) <-chan TO {
-		vch := make(chan TO)
+	return func(chch <-chan <-chan OUT) <-chan OUT {
+		vch := make(chan OUT)
 		go func() {
 			defer close(vch)
 			for {
-				var ch <-chan TO
+				var ch <-chan OUT
 				select {
 				case maybe, ok := <-chch:
 					if !ok {
