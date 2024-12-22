@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 
 	"github.com/sjnam/ofanin"
 )
@@ -42,7 +43,7 @@ func main() {
 				log.Fatal(err)
 			}
 
-			for _, o := range list {
+			for o := range slices.Values(list) {
 				valStream <- o
 			}
 		}()
