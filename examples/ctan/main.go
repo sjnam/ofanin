@@ -27,9 +27,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	ofin := ofanin.NewOrderedFanIn[item /*input param*/, item /*output param*/](ctx)
-	ofin.InputStream = func() <-chan item {
-		valStream := make(chan item)
+	ofin := ofanin.NewOrderedFanIn[string /*input param*/, item /*output param*/](ctx)
+	ofin.InputStream = func() <-chan string {
+		valStream := make(chan string)
 		go func() {
 			defer close(valStream)
 			resp, err := http.Get("https://ctan.org/json/2.0/packages")
@@ -44,18 +44,19 @@ func main() {
 			}
 
 			for o := range slices.Values(list) {
-				valStream <- o
+				valStream <- "https://ctan.org/json/2.0/pkg/" + o.Key
 			}
 		}()
 		return valStream
 	}()
-	ofin.DoWork = func(o item) item {
-		resp, err := http.Get("https://ctan.org/json/2.0/pkg/" + o.Key)
+	ofin.DoWork = func(url string) item {
+		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer resp.Body.Close()
 
+		var o item
 		if err = json.NewDecoder(resp.Body).Decode(&o); err != nil {
 			log.Fatal(o.ID, err)
 		}
