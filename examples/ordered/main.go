@@ -13,7 +13,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	ofin := ofanin.NewOrderedFanIn[string /*input param*/, string /*output param*/](ctx)
+	ofin := ofanin.NewOrderedFanIn[string, string](ctx)
 	ofin.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {

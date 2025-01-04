@@ -11,6 +11,8 @@ import (
 	"github.com/sjnam/ofanin"
 )
 
+const CtanAPIURL = "https://ctan.org/json/2.0"
+
 type item struct {
 	ID      string `json:"id,omitempty"`
 	Key     string `json:"key,omitempty"`
@@ -27,12 +29,13 @@ func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	ofin := ofanin.NewOrderedFanIn[string /*input param*/, item /*output param*/](ctx)
+	ofin := ofanin.NewOrderedFanIn[string, *item](ctx)
 	ofin.InputStream = func() <-chan string {
 		valStream := make(chan string)
 		go func() {
 			defer close(valStream)
-			resp, err := http.Get("https://ctan.org/json/2.0/packages")
+
+			resp, err := http.Get(CtanAPIURL + "/packages")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -43,13 +46,13 @@ func main() {
 				log.Fatal(err)
 			}
 
-			for o := range slices.Values(list) {
-				valStream <- "https://ctan.org/json/2.0/pkg/" + o.Key
+			for p := range slices.Values(list) {
+				valStream <- fmt.Sprintf("%s/%s/%s", CtanAPIURL, "pkg", p.Key)
 			}
 		}()
 		return valStream
 	}()
-	ofin.DoWork = func(url string) item {
+	ofin.DoWork = func(url string) *item {
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatal(err)
@@ -60,14 +63,11 @@ func main() {
 		if err = json.NewDecoder(resp.Body).Decode(&o); err != nil {
 			log.Fatal(o.ID, err)
 		}
-		return o
+		return &o
 	}
 	ofin.Size = 20
 
-	for s := range ofin.Process() {
-		b, err := json.Marshal(s)
-		if err == nil {
-			fmt.Println(string(b))
-		}
+	for p := range ofin.Process() {
+		fmt.Println(p)
 	}
 }
