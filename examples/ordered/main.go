@@ -14,23 +14,25 @@ func main() {
 	defer cancel()
 
 	ofin := ofanin.NewOrderedFanIn[string, string](ctx)
+
 	ofin.InputStream = func() <-chan string {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
 			for i := 0; i < 1000; i++ {
-				// sleep instread of reading a file
 				time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
 				ch <- fmt.Sprintf("line:%3d", i)
 			}
 		}()
 		return ch
 	}()
+
 	ofin.DoWork = func(str string) string {
-		// sleep instead of fetching
-		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		time.Sleep(time.Second)
 		return fmt.Sprintf("%s ... is fetched!", str)
 	}
+
+	ofin.Size = 20
 
 	start := time.Now()
 
@@ -38,5 +40,5 @@ func main() {
 		fmt.Println(s)
 	}
 
-	fmt.Println("done", time.Now().Sub(start))
+	fmt.Println("done", time.Since(start))
 }

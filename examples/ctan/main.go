@@ -30,6 +30,7 @@ func main() {
 	defer cancel()
 
 	ofin := ofanin.NewOrderedFanIn[string, *item](ctx)
+
 	ofin.InputStream = func() <-chan string {
 		valStream := make(chan string)
 		go func() {
@@ -39,7 +40,9 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			var list []item
 			if err = json.NewDecoder(resp.Body).Decode(&list); err != nil {
@@ -52,12 +55,15 @@ func main() {
 		}()
 		return valStream
 	}()
+
 	ofin.DoWork = func(url string) *item {
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		var o item
 		if err = json.NewDecoder(resp.Body).Decode(&o); err != nil {
@@ -65,6 +71,7 @@ func main() {
 		}
 		return &o
 	}
+
 	ofin.Size = 20
 
 	for p := range ofin.Process() {

@@ -30,7 +30,7 @@ func main() {
 			}
 
 			defer func() {
-				log.Printf("goroutine[%d] %v %s", i, time.Now().Sub(start), eStr)
+				log.Printf("goroutine[%d] %v %s", i, time.Since(start), eStr)
 				wg.Done()
 			}()
 
