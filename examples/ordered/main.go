@@ -19,7 +19,7 @@ func main() {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
-			for i := 0; i < 1000; i++ {
+			for i := range 1000 {
 				time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
 				ch <- fmt.Sprintf("line:%3d", i)
 			}

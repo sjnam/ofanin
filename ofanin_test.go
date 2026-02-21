@@ -14,7 +14,7 @@ func ExampleOrderedFanIn() {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				ch <- fmt.Sprintf("%d", i)
 			}
 		}()

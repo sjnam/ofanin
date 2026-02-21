@@ -19,7 +19,7 @@ func main() {
 	defer cancel()
 
 	wg.Add(10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func() {
 			eStr := "finished"
 			start := time.Now()
