@@ -12,8 +12,8 @@ import (
 func main() {
 	var wg sync.WaitGroup
 
-	errChan := make(chan error)
-	defer close(errChan)
+	// 버퍼 크기를 10으로 설정: 수신자가 없어도 모든 고루틴이 블록 없이 전송 가능
+	errChan := make(chan error, 10)
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
@@ -24,18 +24,22 @@ func main() {
 			eStr := "finished"
 			start := time.Now()
 
-			var err error
-			if rand.Intn(10000)%4 == 0 {
-				err = fmt.Errorf("ERROR[%d]", i)
-			}
-
 			defer func() {
 				log.Printf("goroutine[%d] %v %s", i, time.Since(start), eStr)
 				wg.Done()
 			}()
 
+			// time.Tick() 대신 NewTicker 사용으로 누수 방지
+			t := time.NewTicker(time.Duration(rand.Intn(10000)) * time.Millisecond)
+			defer t.Stop()
+
 			select {
-			case <-time.Tick(time.Duration(rand.Intn(10000)) * time.Millisecond):
+			case <-t.C:
+				// 에러 여부를 실제 작업 완료 후 결정
+				var err error
+				if rand.Intn(10000)%4 == 0 {
+					err = fmt.Errorf("ERROR[%d]", i)
+				}
 				errChan <- err
 			case <-ctx.Done():
 				eStr = ctx.Err().Error()
@@ -53,4 +57,5 @@ func main() {
 	}()
 
 	wg.Wait()
+	close(errChan) // wg.Wait() 이후 모든 전송이 끝난 뒤 닫기
 }

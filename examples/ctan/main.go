@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/sjnam/ofanin"
 )
@@ -25,56 +26,74 @@ type item struct {
 	Topics []string `json:"topics,omitempty"`
 }
 
+type result struct {
+	item *item
+	err  error
+}
+
 func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	ofin := ofanin.NewOrderedFanIn[string, *item](ctx)
+	ofin := ofanin.NewOrderedFanIn[string, result](ctx)
+	ofin.Size = 50
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: ofin.Size,
+		},
+	}
 
 	ofin.InputStream = func() <-chan string {
 		valStream := make(chan string)
 		go func() {
 			defer close(valStream)
 
-			resp, err := http.Get(CtanAPIURL + "/packages")
+			resp, err := client.Get(CtanAPIURL + "/packages")
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				return
 			}
-			defer func() {
-				_ = resp.Body.Close()
-			}()
+			defer resp.Body.Close()
 
 			var list []item
 			if err = json.NewDecoder(resp.Body).Decode(&list); err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				return
 			}
 
 			for p := range slices.Values(list) {
-				valStream <- fmt.Sprintf("%s/%s/%s", CtanAPIURL, "pkg", p.Key)
+				// ctx 취소 시 전송 블록 없이 종료
+				select {
+				case valStream <- fmt.Sprintf("%s/%s/%s", CtanAPIURL, "pkg", p.Key):
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 		return valStream
 	}()
 
-	ofin.DoWork = func(url string) *item {
-		resp, err := http.Get(url)
+	ofin.DoWork = func(url string) result {
+		resp, err := client.Get(url)
 		if err != nil {
-			log.Fatal(err)
+			return result{err: err}
 		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
+		defer resp.Body.Close()
 
 		var o item
 		if err = json.NewDecoder(resp.Body).Decode(&o); err != nil {
-			log.Fatal(o.ID, err)
+			return result{err: fmt.Errorf("%s: %w", url, err)}
 		}
-		return &o
+		return result{item: &o}
 	}
 
-	ofin.Size = 20
-
-	for p := range ofin.Process() {
-		fmt.Println(p)
+	for r := range ofin.Process() {
+		if r.err != nil {
+			log.Println(r.err)
+			continue
+		}
+		fmt.Println(*r.item)
 	}
 }
