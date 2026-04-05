@@ -82,6 +82,10 @@ func main() {
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode != http.StatusOK {
+			return result{err: fmt.Errorf("HTTP %d: %s", resp.StatusCode, url)}
+		}
+
 		var o item
 		if err = json.NewDecoder(resp.Body).Decode(&o); err != nil {
 			return result{err: fmt.Errorf("%s: %w", url, err)}

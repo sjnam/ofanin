@@ -37,7 +37,7 @@ func main() {
 			case <-t.C:
 				// 에러 여부를 실제 작업 완료 후 결정
 				var err error
-				if rand.Intn(10000)%4 == 0 {
+				if rand.Intn(4) == 0 {
 					err = fmt.Errorf("ERROR[%d]", i)
 				}
 				errChan <- err
@@ -51,7 +51,7 @@ func main() {
 		for err := range errChan {
 			if err != nil {
 				cancel()
-				return
+				// return 하지 않고 채널을 끝까지 drain하여 에러 누락 방지
 			}
 		}
 	}()

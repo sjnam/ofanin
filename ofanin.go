@@ -20,6 +20,12 @@ func NewOrderedFanIn[IN, OUT any](ctx context.Context) *OrderedFanIn[IN, OUT] {
 }
 
 func (o *OrderedFanIn[IN, OUT]) Process() <-chan OUT {
+	if o.InputStream == nil {
+		panic("ofanin: InputStream must be set before calling Process()")
+	}
+	if o.DoWork == nil {
+		panic("ofanin: DoWork must be set before calling Process()")
+	}
 	if o.Size <= 0 {
 		o.Size = runtime.NumCPU()
 	}
@@ -27,9 +33,10 @@ func (o *OrderedFanIn[IN, OUT]) Process() <-chan OUT {
 }
 
 // fanOut reads from InputStream and spawns a goroutine per item.
-// The buffered chch of size Size acts as a concurrency limiter.
+// A semaphore (sem) limits concurrent DoWork goroutines to exactly Size.
 func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
 	chch := make(chan (<-chan OUT), o.Size)
+	sem := make(chan struct{}, o.Size)
 	go func() {
 		defer close(chch)
 		for {
@@ -38,13 +45,21 @@ func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
 				if !ok {
 					return
 				}
+				// 세마포어 획득: Size개 초과 시 블록
+				select {
+				case sem <- struct{}{}:
+				case <-o.Ctx.Done():
+					return
+				}
 				ch := make(chan OUT, 1)
 				select {
 				case chch <- ch:
 				case <-o.Ctx.Done():
+					<-sem
 					return
 				}
 				go func() {
+					defer func() { <-sem }() // 세마포어 반환
 					defer close(ch)
 					ch <- o.DoWork(v)
 				}()
