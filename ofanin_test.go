@@ -40,7 +40,7 @@ func ExampleOrderedFanIn() {
 	// line:3
 }
 
-// inputChan은 슬라이스를 채널로 변환하는 헬퍼입니다.
+// inputChan is a helper that converts a slice into a channel.
 func inputChan[T any](vals []T) <-chan T {
 	ch := make(chan T)
 	go func() {
@@ -52,8 +52,8 @@ func inputChan[T any](vals []T) <-chan T {
 	return ch
 }
 
-// TestOrderPreserved: 병렬 실행에도 입력 순서가 출력에 보장되는지 확인합니다.
-// 입력을 셔플하여 "출력 순서 == 입력 순서"임을 타이밍 의존 없이 검증합니다.
+// TestOrderPreserved: verifies that output order matches input order even with parallel execution.
+// Shuffles input so "output order == input order" is validated without relying on timing.
 func TestOrderPreserved(t *testing.T) {
 	ctx := context.Background()
 	ofin := NewOrderedFanIn[int, int](ctx)
@@ -81,7 +81,7 @@ func TestOrderPreserved(t *testing.T) {
 	}
 }
 
-// TestConcurrency: Size 만큼 고루틴이 동시에 실행되는지 확인합니다.
+// TestConcurrency: verifies that up to Size goroutines run concurrently.
 func TestConcurrency(t *testing.T) {
 	ctx := context.Background()
 	ofin := NewOrderedFanIn[int, int](ctx)
@@ -121,7 +121,7 @@ func TestConcurrency(t *testing.T) {
 	}
 }
 
-// TestEmptyInput: 빈 입력 채널에서 즉시 종료되는지 확인합니다.
+// TestEmptyInput: verifies that an empty input channel terminates immediately.
 func TestEmptyInput(t *testing.T) {
 	ctx := context.Background()
 	ofin := NewOrderedFanIn[int, int](ctx)
@@ -137,7 +137,7 @@ func TestEmptyInput(t *testing.T) {
 	}
 }
 
-// TestContextCancellation: ctx 취소 시 조기 종료되는지 확인합니다.
+// TestContextCancellation: verifies that cancelling ctx causes early termination.
 func TestContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -145,7 +145,7 @@ func TestContextCancellation(t *testing.T) {
 	ofin := NewOrderedFanIn[int, int](ctx)
 	ofin.Size = 4
 
-	// 무한 스트림
+	// Infinite stream
 	infinite := make(chan int)
 	go func() {
 		defer close(infinite)
@@ -178,7 +178,7 @@ func TestContextCancellation(t *testing.T) {
 	}
 }
 
-// TestSizeZeroDefaultsToCPU: Size=0 이면 NumCPU로 대체되는지 확인합니다.
+// TestSizeZeroDefaultsToCPU: verifies that Size=0 falls back to NumCPU.
 func TestSizeZeroDefaultsToCPU(t *testing.T) {
 	ctx := context.Background()
 	ofin := NewOrderedFanIn[int, int](ctx)
@@ -199,7 +199,7 @@ func TestSizeZeroDefaultsToCPU(t *testing.T) {
 	}
 }
 
-// TestSingleItem: 아이템이 1개인 경우를 확인합니다.
+// TestSingleItem: verifies correct behavior when the input contains exactly one item.
 func TestSingleItem(t *testing.T) {
 	ctx := context.Background()
 	ofin := NewOrderedFanIn[string, string](ctx)

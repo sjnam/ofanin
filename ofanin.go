@@ -45,7 +45,7 @@ func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
 				if !ok {
 					return
 				}
-				// 세마포어 획득: Size개 초과 시 블록
+				// Acquire semaphore: blocks when Size goroutines are already running
 				select {
 				case sem <- struct{}{}:
 				case <-o.Ctx.Done():
@@ -59,7 +59,7 @@ func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
 					return
 				}
 				go func() {
-					defer func() { <-sem }() // 세마포어 반환
+					defer func() { <-sem }() // Release semaphore
 					defer close(ch)
 					ch <- o.DoWork(v)
 				}()
@@ -87,7 +87,7 @@ func (o *OrderedFanIn[IN, OUT]) bridge(chch <-chan (<-chan OUT)) <-chan OUT {
 			case <-o.Ctx.Done():
 				return
 			}
-			// 각 내부 채널은 값을 1개만 전송하므로 orDone 없이 직접 읽음
+			// Each inner channel sends exactly one value, so read directly without orDone
 			select {
 			case v, ok := <-ch:
 				if !ok {

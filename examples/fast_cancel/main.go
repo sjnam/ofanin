@@ -12,7 +12,7 @@ import (
 func main() {
 	var wg sync.WaitGroup
 
-	// 버퍼 크기를 10으로 설정: 수신자가 없어도 모든 고루틴이 블록 없이 전송 가능
+	// Buffer size 10: all goroutines can send without blocking even with no receiver
 	errChan := make(chan error, 10)
 
 	ctx, cancel := context.WithCancel(context.TODO())
@@ -29,13 +29,13 @@ func main() {
 				wg.Done()
 			}()
 
-			// time.Tick() 대신 NewTicker 사용으로 누수 방지
+			// Use NewTicker instead of time.Tick() to prevent goroutine leak
 			t := time.NewTicker(time.Duration(rand.Intn(10000)) * time.Millisecond)
 			defer t.Stop()
 
 			select {
 			case <-t.C:
-				// 에러 여부를 실제 작업 완료 후 결정
+				// Decide whether to report an error after the actual work completes
 				var err error
 				if rand.Intn(4) == 0 {
 					err = fmt.Errorf("ERROR[%d]", i)
@@ -51,11 +51,11 @@ func main() {
 		for err := range errChan {
 			if err != nil {
 				cancel()
-				// return 하지 않고 채널을 끝까지 drain하여 에러 누락 방지
+				// Drain the channel fully instead of returning early to avoid missing errors
 			}
 		}
 	}()
 
 	wg.Wait()
-	close(errChan) // wg.Wait() 이후 모든 전송이 끝난 뒤 닫기
+	close(errChan) // Close after wg.Wait() ensures all sends are done
 }

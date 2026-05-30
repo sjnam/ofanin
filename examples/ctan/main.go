@@ -64,7 +64,7 @@ func main() {
 			}
 
 			for p := range slices.Values(list) {
-				// ctx 취소 시 전송 블록 없이 종료
+				// Exit without blocking on send when ctx is cancelled
 				select {
 				case valStream <- fmt.Sprintf("%s/%s/%s", CtanAPIURL, "pkg", p.Key):
 				case <-ctx.Done():
