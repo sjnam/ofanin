@@ -3,6 +3,7 @@ package ofanin
 import (
 	"context"
 	"runtime"
+	"sync"
 )
 
 type OrderedFanIn[IN, OUT any] struct {
@@ -32,42 +33,58 @@ func (o *OrderedFanIn[IN, OUT]) Process() <-chan OUT {
 	return o.bridge(o.fanOut())
 }
 
-// fanOut reads from InputStream and spawns a goroutine per item.
-// A semaphore (sem) limits concurrent DoWork goroutines to exactly Size.
+type workItem[IN, OUT any] struct {
+	in  IN
+	out chan OUT
+}
+
+// fanOut distributes input items to a fixed pool of Size workers and enqueues
+// result channels into chch in input order, preserving the ordered guarantee.
 func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
+	work := make(chan workItem[IN, OUT], o.Size)
 	chch := make(chan (<-chan OUT), o.Size)
-	sem := make(chan struct{}, o.Size)
+
+	var wg sync.WaitGroup
+	wg.Add(o.Size)
+	for range o.Size {
+		go func() {
+			defer wg.Done()
+			for item := range work {
+				item.out <- o.DoWork(item.in)
+				close(item.out)
+			}
+		}()
+	}
+
 	go func() {
-		defer close(chch)
+		defer func() {
+			close(work)
+			wg.Wait()
+			close(chch)
+		}()
 		for {
 			select {
 			case v, ok := <-o.InputStream:
 				if !ok {
 					return
 				}
-				// Acquire semaphore: blocks when Size goroutines are already running
+				ch := make(chan OUT, 1)
 				select {
-				case sem <- struct{}{}:
+				case work <- workItem[IN, OUT]{in: v, out: ch}:
 				case <-o.Ctx.Done():
 					return
 				}
-				ch := make(chan OUT, 1)
 				select {
 				case chch <- ch:
 				case <-o.Ctx.Done():
-					<-sem
 					return
 				}
-				go func() {
-					defer func() { <-sem }() // Release semaphore
-					defer close(ch)
-					ch <- o.DoWork(v)
-				}()
 			case <-o.Ctx.Done():
 				return
 			}
 		}
 	}()
+
 	return chch
 }
 
