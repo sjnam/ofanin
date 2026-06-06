@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
-	"time"
+"time"
 
 	"github.com/sjnam/ofanin"
 )
@@ -63,10 +62,10 @@ func main() {
 				return
 			}
 
-			for p := range slices.Values(list) {
+			for _, p := range list {
 				// Exit without blocking on send when ctx is cancelled
 				select {
-				case valStream <- fmt.Sprintf("%s/%s/%s", CtanAPIURL, "pkg", p.Key):
+				case valStream <- CtanAPIURL + "/pkg/" + p.Key:
 				case <-ctx.Done():
 					return
 				}
