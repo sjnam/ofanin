@@ -12,7 +12,7 @@ import (
 )
 
 func ExampleOrderedFanIn() {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	ofin := NewOrderedFanIn[string, string](ctx)

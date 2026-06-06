@@ -1,3 +1,6 @@
+// Package ofanin implements an ordered fan-in concurrency pattern: input items
+// are processed in parallel by a fixed worker pool, and results are delivered
+// in the same order as the input.
 package ofanin
 
 import (
@@ -6,13 +9,31 @@ import (
 	"sync"
 )
 
+// OrderedFanIn processes items from InputStream concurrently while preserving
+// the original input order in its output channel.
+//
+// Set InputStream, DoWork, and optionally Size before calling [OrderedFanIn.Process].
+// Process must be called at most once per instance.
 type OrderedFanIn[IN, OUT any] struct {
-	Ctx         context.Context
+	// Ctx controls cancellation. Cancelling it stops Process early.
+	// Do not modify Ctx after calling Process.
+	Ctx context.Context
+
+	// InputStream is the source of input items.
+	// It must be set before calling Process.
 	InputStream <-chan IN
-	DoWork      func(IN) OUT
-	Size        int
+
+	// DoWork is applied to each input item inside a worker goroutine.
+	// It must be set before calling Process and must be safe to call concurrently.
+	DoWork func(IN) OUT
+
+	// Size is the number of concurrent workers.
+	// Defaults to runtime.NumCPU() when zero or negative.
+	Size int
 }
 
+// NewOrderedFanIn returns a new OrderedFanIn with Ctx set to ctx and Size
+// initialised to runtime.NumCPU(). Set InputStream and DoWork before calling Process.
 func NewOrderedFanIn[IN, OUT any](ctx context.Context) *OrderedFanIn[IN, OUT] {
 	return &OrderedFanIn[IN, OUT]{
 		Ctx:  ctx,
@@ -20,6 +41,13 @@ func NewOrderedFanIn[IN, OUT any](ctx context.Context) *OrderedFanIn[IN, OUT] {
 	}
 }
 
+// Process starts the worker pool and returns a channel that delivers results
+// in the same order as InputStream. The returned channel is closed when all
+// items have been processed or Ctx is cancelled.
+//
+// Process must be called at most once per OrderedFanIn instance.
+// The caller must either drain the returned channel or cancel Ctx; otherwise
+// the internal goroutines will leak.
 func (o *OrderedFanIn[IN, OUT]) Process() <-chan OUT {
 	if o.InputStream == nil {
 		panic("ofanin: InputStream must be set before calling Process()")
@@ -104,12 +132,9 @@ func (o *OrderedFanIn[IN, OUT]) bridge(chch <-chan (<-chan OUT)) <-chan OUT {
 			case <-o.Ctx.Done():
 				return
 			}
-			// Each inner channel sends exactly one value, so read directly without orDone
+			// Each inner channel carries exactly one value written by a worker.
 			select {
-			case v, ok := <-ch:
-				if !ok {
-					continue
-				}
+			case v := <-ch:
 				select {
 				case out <- v:
 				case <-o.Ctx.Done():
