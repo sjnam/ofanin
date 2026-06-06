@@ -90,7 +90,7 @@ func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
 
 // bridge iterates the channel-of-channels sequentially, preserving input order.
 func (o *OrderedFanIn[IN, OUT]) bridge(chch <-chan (<-chan OUT)) <-chan OUT {
-	out := make(chan OUT)
+	out := make(chan OUT, 1)
 	go func() {
 		defer close(out)
 		for {
