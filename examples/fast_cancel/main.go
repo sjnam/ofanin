@@ -15,7 +15,7 @@ func main() {
 	// Buffer size 10: all goroutines can send without blocking even with no receiver
 	errChan := make(chan error, 10)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	wg.Add(10)
@@ -30,7 +30,7 @@ func main() {
 			}()
 
 			// Use NewTicker instead of time.Tick() to prevent goroutine leak
-			t := time.NewTicker(time.Duration(rand.Intn(10000)) * time.Millisecond)
+			t := time.NewTicker(time.Duration(1+rand.Intn(9999)) * time.Millisecond)
 			defer t.Stop()
 
 			select {
@@ -47,7 +47,9 @@ func main() {
 		}()
 	}
 
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		for err := range errChan {
 			if err != nil {
 				cancel()
@@ -58,4 +60,5 @@ func main() {
 
 	wg.Wait()
 	close(errChan) // Close after wg.Wait() ensures all sends are done
+	<-done         // Wait for consumer to finish draining
 }
