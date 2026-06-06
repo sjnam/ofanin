@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	ofin := ofanin.NewOrderedFanIn[string, string](ctx)
@@ -19,8 +19,8 @@ func main() {
 		ch := make(chan string)
 		go func() {
 			defer close(ch)
-			for i := range 1000 {
-				time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
+			for i := range 100 {
+				time.Sleep(time.Duration(1+rand.Intn(5)) * time.Millisecond)
 				ch <- fmt.Sprintf("line:%3d", i)
 			}
 		}()
@@ -28,7 +28,9 @@ func main() {
 	}()
 
 	ofin.DoWork = func(str string) string {
-		time.Sleep(time.Second)
+		// Variable duration (50~200ms) causes items to finish out of input order,
+		// making the ordering guarantee visible in the output.
+		time.Sleep(time.Duration(50+rand.Intn(151)) * time.Millisecond)
 		return fmt.Sprintf("%s ... is fetched!", str)
 	}
 
