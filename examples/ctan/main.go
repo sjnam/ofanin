@@ -31,12 +31,13 @@ type result struct {
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	ofin := ofanin.NewOrderedFanIn[string, result](ctx)
 	ofin.Size = 50
-
+	ofin.Lookahead = 8
+	
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
