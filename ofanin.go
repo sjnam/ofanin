@@ -30,6 +30,13 @@ type OrderedFanIn[IN, OUT any] struct {
 	// Size is the number of concurrent workers.
 	// Defaults to runtime.NumCPU() when zero or negative.
 	Size int
+
+	// Lookahead multiplies the internal channel buffers (work and chch) by Size,
+	// allowing workers to pre-process items beyond the current head of the queue.
+	// This reduces head-of-line blocking when DoWork duration varies widely across items:
+	// a slow item at position 0 no longer stalls the workers processing items 1, 2, ...
+	// Defaults to 1 (buffer = Size) when zero or negative.
+	Lookahead int
 }
 
 // NewOrderedFanIn returns a new OrderedFanIn with Ctx set to ctx and Size
@@ -58,6 +65,9 @@ func (o *OrderedFanIn[IN, OUT]) Process() <-chan OUT {
 	if o.Size <= 0 {
 		o.Size = runtime.NumCPU()
 	}
+	if o.Lookahead <= 0 {
+		o.Lookahead = 1
+	}
 	return o.bridge(o.fanOut())
 }
 
@@ -69,8 +79,9 @@ type workItem[IN, OUT any] struct {
 // fanOut distributes input items to a fixed pool of Size workers and enqueues
 // result channels into chch in input order, preserving the ordered guarantee.
 func (o *OrderedFanIn[IN, OUT]) fanOut() <-chan (<-chan OUT) {
-	work := make(chan workItem[IN, OUT], o.Size)
-	chch := make(chan (<-chan OUT), o.Size)
+	buf := o.Size * o.Lookahead
+	work := make(chan workItem[IN, OUT], buf)
+	chch := make(chan (<-chan OUT), buf)
 
 	var wg sync.WaitGroup
 	wg.Add(o.Size)

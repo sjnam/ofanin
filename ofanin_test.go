@@ -199,6 +199,71 @@ func TestSizeZeroDefaultsToCPU(t *testing.T) {
 	}
 }
 
+// TestLookaheadReducesHeadOfLineBlocking: verifies that a Lookahead > 1 allows workers
+// to pre-process items past a slow head item, reducing total elapsed time.
+func TestLookaheadReducesHeadOfLineBlocking(t *testing.T) {
+	// Item 0 sleeps 100ms; items 1-19 sleep 10ms each. Size=4 workers.
+	//
+	// Without lookahead (buf=4): after items 1-3 complete (10ms), the producer
+	// cannot dispatch items 4+ because chch is full (bridge blocked on item 0).
+	// Workers sit idle for ~90ms, then items 4-19 run in 4 batches of 10ms → ~140ms total.
+	//
+	// With Lookahead=8 (buf=32): all 20 items are queued immediately. Workers keep
+	// running through items 1-19 concurrently with item 0 → ~100ms total.
+	const size, n = 4, 20
+	run := func(lookahead int) time.Duration {
+		ctx := context.Background()
+		ofin := NewOrderedFanIn[int, int](ctx)
+		ofin.Size = size
+		ofin.Lookahead = lookahead
+		ofin.InputStream = inputChan(func() []int {
+			s := make([]int, n)
+			for i := range s {
+				s[i] = i
+			}
+			return s
+		}())
+		ofin.DoWork = func(v int) int {
+			if v == 0 {
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				time.Sleep(10 * time.Millisecond)
+			}
+			return v
+		}
+		start := time.Now()
+		i := 0
+		for got := range ofin.Process() {
+			if got != i {
+				t.Errorf("order broken: index %d got %d", i, got)
+			}
+			i++
+		}
+		return time.Since(start)
+	}
+
+	without := run(1)
+	with := run(8)
+	if with >= without {
+		t.Fatalf("expected lookahead to reduce latency: without=%v with=%v", without, with)
+	}
+}
+
+// TestLookaheadZeroDefaultsToOne: verifies that Lookahead=0 is treated as 1.
+func TestLookaheadZeroDefaultsToOne(t *testing.T) {
+	ctx := context.Background()
+	ofin := NewOrderedFanIn[int, int](ctx)
+	ofin.Lookahead = 0
+	ofin.InputStream = inputChan([]int{1, 2, 3})
+	ofin.DoWork = func(v int) int { return v }
+
+	for range ofin.Process() {
+	}
+	if ofin.Lookahead != 1 {
+		t.Fatalf("expected Lookahead=1, got %d", ofin.Lookahead)
+	}
+}
+
 // TestSingleItem: verifies correct behavior when the input contains exactly one item.
 func TestSingleItem(t *testing.T) {
 	ctx := context.Background()
