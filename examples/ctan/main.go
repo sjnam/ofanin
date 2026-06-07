@@ -35,8 +35,8 @@ func main() {
 	defer cancel()
 
 	ofin := ofanin.NewOrderedFanIn[string, result](ctx)
-	ofin.Size = 50
-	ofin.Lookahead = 8
+	ofin.Size = 100
+	ofin.Lookahead = 64
 	
 	client := &http.Client{
 		Timeout: 30 * time.Second,
