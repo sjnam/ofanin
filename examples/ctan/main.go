@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-"time"
+	"time"
 
 	"github.com/sjnam/ofanin"
 )
@@ -37,7 +37,7 @@ func main() {
 	ofin := ofanin.NewOrderedFanIn[string, result](ctx)
 	ofin.Size = 100
 	ofin.Lookahead = 64
-	
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
